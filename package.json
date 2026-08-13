@@ -1,0 +1,15 @@
+{
+  "name": "netease-discovery",
+  "version": "1.0.0",
+  "description": "每日探索歌单 - 读懂网易云口味，挖出没听过但会喜欢的新歌",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "松茸",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "NeteaseCloudMusicApi": "^4.32.0"
+  }
+}

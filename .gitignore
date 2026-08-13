@@ -1,0 +1,30 @@
+node_modules/
+dist/
+*.zip
+
+# 敏感/本地文件，绝不提交
+data/cookie.json
+data/config.json
+data/login-qr.html
+data/daily-*.json
+data/daily-*.html
+data/explore-*.json
+data/playlist.json
+data/tracks.json
+data/style_list.json
+
+# 调试脚本
+probe.js
+test-*.js
+explore-test.js
+style-song-test.js
+diagnose.js
+fetch.js
+analyze.js
+recent.js
+style-tree.js
+add-tracks.js
+pack.ps1
+
+*.log
+.DS_Store

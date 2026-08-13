@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>每日探索歌单</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&family=Noto+Sans+SC:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    color-scheme: light;
+    --brand: #EC4141;
+    --brand-strong: #D4333A;
+    --brand-soft: color-mix(in oklch, #EC4141 12%, white);
+    --brand-faint: color-mix(in oklch, #EC4141 6%, white);
+    --genre: oklch(0.56 0.15 302);
+    --genre-soft: color-mix(in oklch, oklch(0.56 0.15 302) 13%, white);
+
+    --bg: #FAF8F7;
+    --surface: #FFFFFF;
+    --fg: oklch(0.24 0.012 20);
+    --muted: oklch(0.44 0.014 20);
+    --faint: oklch(0.50 0.012 20);
+    --border: oklch(0.90 0.006 20);
+    --line: oklch(0.94 0.005 20);
+
+    --shadow-sm: 0 1px 2px oklch(0.24 0.012 20 / 0.06), 0 4px 14px oklch(0.24 0.012 20 / 0.06);
+    --shadow-lg: 0 12px 34px oklch(0.24 0.012 20 / 0.14), 0 2px 6px oklch(0.24 0.012 20 / 0.06);
+
+    --font-disp: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif;
+    --font-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --font-mono: "Space Grotesk", system-ui, sans-serif;
+
+    --radius: 16px;
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+  }
+  *{ box-sizing:border-box; }
+  :where(a, button, input):focus-visible{ outline:2px solid var(--brand); outline-offset:2px; border-radius:6px; }
+  html,body{ margin:0; min-height:100%; }
+  body{ background:var(--bg); color:var(--fg); font-family:var(--font-body); font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; }
+
+  /* 顶部导航 */
+  header.top{ position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:18px; padding:14px clamp(18px,5vw,64px); background:color-mix(in oklch, var(--surface) 82%, transparent); backdrop-filter:blur(14px) saturate(160%); border-bottom:1px solid var(--line); }
+  .brand{ display:flex; align-items:baseline; gap:10px; }
+  .brand b{ font-family:var(--font-disp); font-weight:900; font-size:22px; letter-spacing:.03em; }
+  .brand i{ font-style:normal; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.38em; text-transform:uppercase; color:var(--muted); }
+  nav.links{ display:flex; gap:6px; margin-left:8px; }
+  nav.links a{ text-decoration:none; color:var(--muted); font-size:14px; padding:7px 13px; border-radius:999px; transition:color .15s var(--ease), background .15s var(--ease); }
+  nav.links a:hover{ color:var(--fg); background:var(--line); }
+  .top .spacer{ flex:1; }
+  .btn-login{ border:1px solid var(--border); background:var(--surface); color:var(--fg); font-size:14px; font-weight:500; padding:9px 20px; border-radius:999px; cursor:pointer; transition:border-color .15s var(--ease), box-shadow .15s var(--ease); }
+  .btn-login:hover{ border-color:var(--brand); box-shadow:var(--shadow-sm); }
+  @media (max-width:720px){ nav.links{ display:none; } }
+
+  /* Hero */
+  .hero{ position:relative; overflow:hidden; background:linear-gradient(128deg, #C53034 0%, #D4333A 34%, #EC4141 68%, #EE4D44 100%); color:#fff; padding:clamp(48px,7vw,92px) clamp(20px,6vw,80px); }
+  .hero .spot{ position:absolute; border-radius:50%; filter:blur(2px); pointer-events:none; }
+  .spot.s1{ width:460px; height:460px; top:-140px; right:-80px; background:radial-gradient(circle at 50% 50%, oklch(1 0 0 / 0.34), transparent 62%); }
+  .spot.s2{ width:360px; height:360px; bottom:-160px; left:-70px; background:radial-gradient(circle at 50% 50%, oklch(0.99 0.05 85 / 0.30), transparent 60%); }
+  .spot.s3{ width:220px; height:220px; top:16%; left:44%; background:radial-gradient(circle at 50% 50%, oklch(1 0 0 / 0.22), transparent 65%); animation:drift 11s ease-in-out infinite alternate; }
+  .spot.s4{ width:150px; height:150px; bottom:12%; right:24%; background:radial-gradient(circle at 50% 50%, oklch(0.98 0.09 55 / 0.30), transparent 60%); animation:drift 14s ease-in-out infinite alternate-reverse; }
+  @keyframes drift{ from{ transform:translate3d(0,0,0);} to{ transform:translate3d(24px,-16px,0);} }
+  .hero-in{ position:relative; max-width:900px; }
+  .kicker{ font-family:var(--font-mono); font-size:12px; letter-spacing:.34em; text-transform:uppercase; color:oklch(1 0 0 / 0.92); margin:0 0 20px; display:flex; align-items:center; gap:14px; font-weight:500; }
+  .kicker::before{ content:""; width:34px; height:1px; background:oklch(1 0 0 / 0.7); }
+  h1{ margin:0 0 18px; font-family:var(--font-disp); font-weight:700; font-size:clamp(30px,5vw,52px); line-height:1.2; letter-spacing:.01em; max-width:18ch; }
+  h1 em{ font-style:normal; color:oklch(1 0.05 90); }
+  .lede{ margin:0 0 30px; font-size:clamp(15px,1.5vw,17px); color:oklch(1 0 0 / 0.96); max-width:52ch; line-height:1.9; }
+  .cta-hero{ border:none; cursor:pointer; background:#fff; color:var(--brand-strong); font-size:16px; font-weight:700; padding:14px 30px; border-radius:999px; box-shadow:0 8px 24px oklch(0.24 0.05 20 / 0.22); transition:transform .15s var(--ease), box-shadow .15s var(--ease); }
+  .cta-hero:hover{ transform:translateY(-2px); box-shadow:0 12px 30px oklch(0.24 0.05 20 / 0.30); }
+  .cta-hero:active{ transform:translateY(0); }
+  .hint{ margin-top:14px; font-size:13px; color:oklch(1 0 0 / 0.85); }
+
+  /* 主区 */
+  main{ padding:clamp(24px,5vh,60px) clamp(16px,4vw,48px) 80px; }
+  .steps{ max-width:980px; margin:0 auto; display:flex; flex-direction:column; gap:26px; }
+
+  .step-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-sm); overflow:hidden; }
+  .step-head{ display:flex; align-items:flex-start; gap:18px; padding:26px 28px 0; }
+  .step-no{ flex:none; width:48px; height:48px; border-radius:14px; background:var(--brand-faint); color:var(--brand-strong); font-family:var(--font-disp); font-weight:700; font-size:24px; line-height:48px; text-align:center; }
+  .step-head .tit{ flex:1; min-width:0; }
+  .step-head h2{ margin:0 0 4px; font-family:var(--font-disp); font-size:22px; font-weight:700; letter-spacing:.01em; }
+  .step-head p{ margin:0; color:var(--muted); font-size:14px; line-height:1.7; }
+  .counter{ flex:none; align-self:center; font-size:14px; color:var(--muted); background:var(--brand-faint); border-radius:999px; padding:8px 16px; white-space:nowrap; }
+  .counter b{ color:var(--brand-strong); font-weight:700; font-family:var(--font-mono); }
+
+  .step-body{ padding:20px 28px 28px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:13px; color:var(--muted); margin-bottom:7px; }
+  .field input{ width:100%; border:1px solid var(--border); border-radius:12px; padding:12px 14px; font-size:15px; font-family:inherit; color:var(--fg); background:var(--surface); transition:border-color .15s var(--ease), box-shadow .15s var(--ease); }
+  .field input:focus{ outline:none; border-color:var(--brand); box-shadow:0 0 0 3px var(--brand-soft); }
+  .field .hint{ margin-top:6px; color:var(--faint); font-size:12px; }
+
+  .toolbar{ display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; padding:20px 28px 6px; }
+  .seg{ display:inline-flex; background:var(--line); border-radius:12px; padding:4px; gap:4px; }
+  .seg button{ border:none; background:transparent; color:var(--muted); cursor:pointer; font-size:14px; font-weight:500; padding:9px 18px; border-radius:9px; transition:color .15s var(--ease), background .15s var(--ease), box-shadow .15s var(--ease); }
+  .seg button:hover{ color:var(--fg); }
+  .seg button.active{ background:var(--surface); color:var(--fg); font-weight:700; box-shadow:var(--shadow-sm); }
+
+  .btn{ display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; font-weight:500; border-radius:12px; padding:10px 18px; min-height:44px; transition:all .15s var(--ease); }
+  .btn svg{ width:16px; height:16px; flex:none; }
+  .btn-ghost{ background:var(--surface); color:var(--fg); border:1px solid var(--border); }
+  .btn-ghost:hover{ border-color:var(--brand); color:var(--brand-strong); }
+  .btn-ghost:active{ background:var(--brand-faint); }
+  .btn-primary{ border:none; background:var(--brand); color:#fff; font-weight:700; padding:12px 24px; box-shadow:0 6px 16px color-mix(in oklch, #EC4141 34%, transparent); }
+  .btn-primary:hover{ background:var(--brand-strong); box-shadow:0 8px 20px color-mix(in oklch, #EC4141 40%, transparent); }
+  .btn-primary:active{ transform:translateY(1px); box-shadow:none; }
+  .btn-primary:disabled{ background:var(--faint); color:#fff; box-shadow:none; cursor:default; }
+
+  /* 分组 + 网格 */
+  .groups{ padding:14px 28px 30px; }
+  .group-label{ display:flex; align-items:center; gap:12px; margin:18px 0 14px; font-size:13px; color:var(--muted); font-weight:500; }
+  .group-label:first-child{ margin-top:4px; }
+  .group-label::after{ content:""; flex:1; height:1px; background:var(--line); }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(178px,1fr)); gap:20px; }
+
+  .song{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:10px; transition:transform .18s var(--ease), box-shadow .18s var(--ease), border-color .18s var(--ease); }
+  .song:hover{ transform:translateY(-5px); box-shadow:var(--shadow-lg); border-color:var(--line); }
+  .cover{ position:relative; aspect-ratio:1/1; border-radius:12px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, oklch(0.66 0.12 20), oklch(0.50 0.14 46)); }
+  .cover img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .cover .mono{ font-family:var(--font-disp); font-weight:700; font-size:52px; color:oklch(1 0 0 / 0.92); text-shadow:0 2px 16px oklch(0.18 0.04 0 / 0.34); pointer-events:none; }
+  .cover .sheen{ position:absolute; inset:0; pointer-events:none; background:radial-gradient(120% 90% at 20% 8%, oklch(1 0 0 / 0.28), transparent 46%); }
+  .vip{ position:absolute; top:9px; left:9px; font-size:10.5px; font-weight:700; letter-spacing:.04em; color:#fff; background:var(--brand); padding:3px 8px; border-radius:999px; box-shadow:0 2px 8px oklch(0.3 0.2 25 / 0.4), 0 0 0 1px oklch(1 0 0 / 0.55); }
+  .swap{ position:absolute; right:10px; bottom:10px; width:34px; height:34px; border-radius:50%; background:oklch(1 0 0 / 0.82); backdrop-filter:blur(4px); border:none; cursor:pointer; display:grid; place-items:center; color:var(--fg); opacity:0; transform:translateY(6px); box-shadow:0 4px 12px oklch(0.2 0.03 0 / 0.2); transition:opacity .15s var(--ease), transform .15s var(--ease), background .15s var(--ease); }
+  .swap svg{ width:15px; height:15px; }
+  .swap:hover{ background:var(--brand); color:#fff; }
+  .song:hover .swap{ opacity:1; transform:translateY(0); }
+  @media (hover:none){ .swap{ opacity:1; transform:none; } }
+  .meta{ padding:10px 4px 4px; }
+  .name{ font-size:14.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .artist{ font-size:12.5px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tags{ display:flex; align-items:center; gap:6px; margin-top:8px; }
+  .genre{ font-size:11px; font-weight:500; color:var(--genre); background:var(--genre-soft); padding:3px 9px; border-radius:999px; white-space:nowrap; }
+  .lang{ font-size:11px; color:var(--faint); }
+  .score{ font-size:11.5px; color:var(--brand-strong); font-weight:700; }
+  .summary{ font-size:12.5px; color:var(--muted); line-height:1.7; margin-top:8px; border-left:3px solid var(--brand); padding-left:9px; background:var(--brand-faint); border-radius:0 8px 8px 0; }
+  .lyric{ font-size:12.5px; color:var(--muted); font-style:italic; line-height:1.7; margin-top:8px; border-left:3px solid var(--line); padding-left:9px; }
+
+  /* 二维码 */
+  .qr-pane{ display:flex; gap:26px; align-items:center; flex-wrap:wrap; }
+  .qr{ width:176px; height:176px; border:1px solid var(--line); border-radius:14px; padding:10px; background:#fff; }
+  .qr img{ width:100%; height:100%; display:block; border-radius:8px; }
+  .qr-hint{ font-size:13px; color:var(--muted); line-height:1.9; }
+  .qr-hint b{ color:var(--fg); }
+  .gen-zone{ margin-top:24px; padding-top:22px; border-top:1px dashed var(--border); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .gen-note{ font-size:13.5px; color:var(--muted); }
+  .spinner{ width:16px; height:16px; border-radius:50%; border:2px solid oklch(1 0 0 / 0.4); border-top-color:#fff; animation:spin .7s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg);} }
+
+  /* 文案设置折叠 */
+  .collapse-toggle{ border:none; background:none; cursor:pointer; color:var(--muted); padding:6px; width:36px; height:36px; border-radius:10px; display:grid; place-items:center; transition:background .15s var(--ease), color .15s var(--ease), transform .2s var(--ease); }
+  .collapse-toggle svg{ width:18px; height:18px; transition:transform .2s var(--ease); }
+  .collapse-toggle:hover{ background:var(--line); color:var(--fg); }
+  .step-card.collapsed .collapse-toggle svg{ transform:rotate(-90deg); }
+  .step-card.collapsed .step-body{ display:none; }
+  .test-row{ display:flex; gap:10px; align-items:center; margin-top:14px; flex-wrap:wrap; }
+  #testResult{ font-size:12.5px; }
+
+  /* 结果链接 */
+  .result-link{ margin:0 28px 26px; padding:16px 18px; border-radius:12px; background:var(--brand-faint); border:1px solid color-mix(in oklch, #EC4141 20%, white); font-size:13.5px; line-height:1.8; word-break:break-all; }
+  .result-link b{ color:var(--brand-strong); }
+  .result-link a{ color:var(--brand-strong); font-weight:600; }
+
+  footer{ border-top:1px solid var(--line); background:var(--surface); }
+  footer .in{ max-width:980px; margin:0 auto; padding:24px clamp(16px,4vw,48px); display:flex; gap:20px; flex-wrap:wrap; align-items:center; }
+  footer .in span{ color:var(--muted); font-size:13px; }
+  footer .badge{ font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; color:var(--muted); border:1px solid var(--border); padding:5px 12px; border-radius:999px; }
+  footer .badge:last-child{ margin-left:auto; }
+
+  .toast{ position:fixed; left:50%; bottom:34px; transform:translate(-50%,16px); z-index:60; background:var(--fg); color:#fff; padding:12px 22px; border-radius:999px; font-size:14px; box-shadow:var(--shadow-lg); opacity:0; pointer-events:none; transition:opacity .2s var(--ease), transform .2s var(--ease); }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+
+  @media (max-width:560px){
+    .step-head{ padding:20px 18px 0; gap:14px; }
+    .step-body{ padding:18px 18px 24px; }
+    .groups{ padding:12px 18px 22px; }
+    .toolbar{ padding:18px 18px 6px; }
+    .grid{ grid-template-columns:repeat(2,1fr); gap:14px; }
+  }
+  @media (prefers-reduced-motion:reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="brand"><b>每日探索</b><i>DISCOVER</i></div>
+    <nav class="links">
+      <a href="#step-card-1">生成歌单</a>
+      <a href="#step-card-2">登录</a>
+      <a href="#step-card-3">文案设置</a>
+    </nav>
+    <div class="spacer"></div>
+    <button class="btn-login" id="btn-login" type="button" onclick="handleLoginBtn()">登录</button>
+  </header>
+
+  <section class="hero">
+    <span class="spot s1"></span><span class="spot s2"></span><span class="spot s3"></span><span class="spot s4"></span>
+    <div class="hero-in">
+      <p class="kicker">Discover · 歌单生成</p>
+      <h1>把喜欢听的，<em>变成没听过但会喜欢的</em>。</h1>
+      <p class="lede">读懂你的口味，从 16 个曲风池里挖出全新的声音。选歌单、登录、一键生成——像在晚风里拆开一封陌生的信。</p>
+      <button class="cta-hero" type="button" onclick="scrollToStep(1)">开始生成</button>
+      <p class="hint">本地运行 · 数据不出你的电脑</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="steps">
+
+      <!-- ① 生成歌单 -->
+      <article class="step-card" id="step-card-1">
+        <div class="step-head">
+          <span class="step-no">①</span>
+          <div class="tit">
+            <h2>生成歌单</h2>
+            <p>输入你的「我喜欢的音乐」歌单，AI 会避开你听过的歌，挖出 15 首新声音。</p>
+          </div>
+          <span class="counter">已生成 <b id="sel-count">0</b> 首</span>
+        </div>
+        <div class="step-body">
+          <div class="field">
+            <label for="pid">歌单链接或 id</label>
+            <input id="pid" placeholder="https://music.163.com/playlist?id=122115618" />
+            <div class="hint">网易云 App → 我的 → 我喜欢的音乐 → 分享 → 复制链接</div>
+          </div>
+          <div class="gen-zone" style="margin-top:18px;padding-top:18px">
+            <button class="btn btn-primary" type="button" id="btn-generate" onclick="generate()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/></svg>
+              生成今日 15 首
+            </button>
+            <span class="gen-note" id="gen-note">填好歌单后，一键生成。</span>
+          </div>
+        </div>
+
+        <div class="toolbar" id="toolbar" style="display:none">
+          <div class="seg" role="tablist">
+            <button type="button" class="active" data-group="style" onclick="setGroup('style', this)">按曲风</button>
+            <button type="button" data-group="lang" onclick="setGroup('lang', this)">按语言</button>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-ghost" type="button" onclick="regenerateAll()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 1 3 6.7"/><path d="M3 16v-4h4"/></svg>
+              换一批
+            </button>
+            <button class="btn btn-primary" type="button" onclick="createPlaylist()">🚀 创建到网易云</button>
+          </div>
+        </div>
+
+        <div id="result-link"></div>
+        <div class="groups" id="song-groups"></div>
+      </article>
+
+      <!-- ② 登录 -->
+      <article class="step-card" id="step-card-2">
+        <div class="step-head">
+          <span class="step-no">②</span>
+          <div class="tit">
+            <h2>登录</h2>
+            <p>扫码登录后，才能把歌单一键创建到你的网易云账号。</p>
+          </div>
+          <span class="counter" id="login-badge">未登录</span>
+        </div>
+        <div class="step-body">
+          <div class="qr-pane">
+            <div class="qr" id="qr"></div>
+            <div style="flex:1;min-width:200px">
+              <p class="qr-hint" id="status">点击下方按钮生成二维码，用<b>网易云 App</b> 扫一扫。</p>
+              <div style="margin-top:14px">
+                <button class="btn btn-primary" type="button" id="loginBtn" onclick="login()">生成登录二维码</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ③ 文案设置 -->
+      <article class="step-card collapsed" id="step-card-3">
+        <div class="step-head">
+          <span class="step-no">③</span>
+          <div class="tit">
+            <h2>文案设置</h2>
+            <p>默认展示每首歌的歌词摘录；也可接入 LLM，让 AI 为每首歌写一句梗概。</p>
+          </div>
+          <button class="collapse-toggle" type="button" id="btn-collapse" aria-label="展开或折叠">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+        </div>
+        <div class="step-body">
+          <div class="seg" id="modeSeg">
+            <button type="button" id="modeLyric" class="active" onclick="setMode(false)">歌词摘录</button>
+            <button type="button" id="modeLlm" onclick="setMode(true)">AI 梗概</button>
+          </div>
+          <div id="llmFields" style="display:none;margin-top:18px;max-width:560px">
+            <div class="field">
+              <label for="cfgBaseUrl">LLM 接口地址</label>
+              <input id="cfgBaseUrl" placeholder="https://api.siliconflow.cn/v1" />
+            </div>
+            <div class="field">
+              <label for="cfgApiKey">API Key</label>
+              <input id="cfgApiKey" type="password" placeholder="sk-..." />
+            </div>
+            <div class="field">
+              <label for="cfgModel">模型名（服务商控制台查真实 ID）</label>
+              <input id="cfgModel" placeholder="deepseek-ai/DeepSeek-V3.2" />
+            </div>
+            <div class="test-row">
+              <button class="btn btn-ghost" type="button" onclick="testLlm()">测试连接</button>
+              <button class="btn btn-primary" type="button" onclick="saveConfig()">保存设置</button>
+              <span id="testResult"></span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="in">
+      <span>每日探索 DISCOVER · 为你的耳朵写一封新信</span>
+      <span class="badge">① 生成歌单 / ② 登录 / ③ 文案设置</span>
+    </div>
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  "use strict";
+  var picks = [];
+  var loggedIn = false;
+  var loginNickname = '';
+  var groupBy = "style";
+  var GROUP_NAMES = { 华语:"华语", 欧美:"欧美", 日语:"日系", 韩语:"韩系" };
+  var HUES = [8,20,42,198,268,322,350,55,142,92,275,16];
+
+  var $groups = document.getElementById("song-groups");
+  var $toolbar = document.getElementById("toolbar");
+  var $selCount = document.getElementById("sel-count");
+  var $toast = document.getElementById("toast");
+  var $status = document.getElementById("status");
+  var $loginBadge = document.getElementById("login-badge");
+  var $genBtn = document.getElementById("btn-generate");
+  var $genNote = document.getElementById("gen-note");
+  var $resultLink = document.getElementById("result-link");
+  var $btnCollapse = document.getElementById("btn-collapse");
+
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function toast(msg){ $toast.textContent = msg; $toast.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(function(){ $toast.classList.remove("show"); }, 2000); }
+  function setStatus(t, ok){ $status.innerHTML = t; }
+  function coverFallback(hue){ return "linear-gradient(135deg, oklch(0.66 0.12 " + hue + "), oklch(0.50 0.14 " + ((hue+46)%360) + "))"; }
+  function savePid(id){ try { localStorage.setItem('discover_pid', id); } catch(e){} }
+  function loadPid(){ try { return localStorage.getItem('discover_pid') || ''; } catch(e){ return ''; } }
+
+  /* 登录 */
+  async function login(){
+    setStatus('获取二维码...');
+    document.getElementById("qr").innerHTML = '<div class="spinner" style="margin:66px auto"></div>';
+    var r = await fetch('/api/qr');
+    var d = await r.json();
+    document.getElementById("qr").innerHTML = '<img src="'+d.qrimg+'" alt="登录二维码">';
+    setStatus('请用<b>网易云 App</b> 扫码，并在 App 内点「确认登录」');
+    poll(d.unikey, 0);
+  }
+  async function poll(key, n){
+    if (n > 150){ setStatus('二维码已过期，请重新点击'); return; }
+    var r = await fetch('/api/qr-check?key='+key);
+    var d = await r.json();
+    if (d.code === 803){
+      var a = await fetch('/api/account');
+      var acc = await a.json();
+      setLoggedIn(acc.nickname || '');
+    } else if (d.code === 801){
+      setStatus('已扫码，请在 App 内确认...');
+      setTimeout(function(){ poll(key, n+1); }, 2000);
+    } else {
+      setTimeout(function(){ poll(key, n+1); }, 2000);
+    }
+  }
+
+  function setLoggedIn(nickname){
+    loggedIn = true;
+    loginNickname = nickname;
+    document.getElementById("qr").innerHTML = '';
+    setStatus('✅ 已登录：<b>'+esc(nickname)+'</b>');
+    $loginBadge.innerHTML = '已登录';
+    document.getElementById("btn-login").textContent = nickname + ' · 退出';
+    autoFillPlaylist();
+  }
+
+  async function logout(){
+    await fetch('/api/logout');
+    loggedIn = false;
+    loginNickname = '';
+    $loginBadge.innerHTML = '未登录';
+    document.getElementById("btn-login").textContent = '登录';
+    document.getElementById("qr").innerHTML = '';
+    setStatus('已退出登录');
+    toast('已退出登录');
+  }
+
+  function handleLoginBtn(){
+    if (loggedIn) logout(); else scrollToStep(2);
+  }
+
+  async function autoFillPlaylist(){
+    try {
+      var r = await fetch('/api/my-playlist');
+      var d = await r.json();
+      if (d.mineId){
+        var input = document.getElementById("pid");
+        if (!input.value.trim()) { input.value = d.mineId; savePid(d.mineId); toast('已自动带出你的「我喜欢的音乐」歌单'); }
+      }
+    } catch(e){}
+  }
+
+  async function checkAccount(){
+    var r = await fetch('/api/account');
+    var acc = await r.json();
+    if (acc.loggedIn){ setLoggedIn(acc.nickname || ''); }
+  }
+
+  /* 生成 */
+  function extractPid(v){
+    v = (v||'').trim();
+    var m = v.match(/id=(\d+)/);
+    if (m) return m[1];
+    if (/^\d+$/.test(v)) return v;
+    return '';
+  }
+  async function generate(){
+    var pid = extractPid(document.getElementById("pid").value);
+    if (!pid){ toast("请先填写有效的歌单 id"); return; }
+    var orig = $genBtn.innerHTML;
+    $genBtn.disabled = true;
+    $genBtn.innerHTML = '<span class="spinner"></span>正在生成…';
+    $genNote.textContent = "AI 正在分析你的口味并探索新歌（首次约 1 分钟）…";
+    try {
+      var r = await fetch('/api/generate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ playlistId: pid }) });
+      var data = await r.json();
+      if (data.error){ toast("出错："+data.error); $genBtn.disabled = false; $genBtn.innerHTML = orig; return; }
+      picks = data.picks;
+      render();
+      $genNote.innerHTML = '已生成 <b>'+picks.length+'</b> 首' + (data.llmWarning ? ' | ⚠️ '+data.llmWarning : '');
+      $genBtn.disabled = false;
+      $genBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 1 3 6.7"/><path d="M3 16v-4h4"/></svg>重新生成';
+      document.getElementById("step-card-1").scrollIntoView({ behavior:"smooth" });
+    } catch(e){
+      toast("出错："+e.message);
+      $genBtn.disabled = false;
+      $genBtn.innerHTML = orig;
+    }
+  }
+
+  /* 渲染 */
+  function songCard(m, idx){
+    var c = document.createElement("div");
+    c.className = "song";
+    var hue = HUES[idx % HUES.length];
+    var cover = m.picUrl
+      ? '<img src="'+esc(m.picUrl)+'" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
+      : '';
+    var fallback = m.picUrl ? '<span class="mono" style="display:none">'+esc(m.name.charAt(0))+'</span>' : '<span class="mono">'+esc(m.name.charAt(0))+'</span>';
+    c.innerHTML =
+      '<div class="cover" style="background:'+coverFallback(hue)+'">'+cover+fallback+'<span class="sheen"></span>'+
+        (m.fee!==0&&m.fee!==8 ? '<span class="vip">VIP</span>' : '')+
+        '<button class="swap" type="button" title="换一首"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 1 3 6.7"/><path d="M3 16v-4h4"/></svg></button>'+
+      '</div>'+
+      '<div class="meta">'+
+        '<div class="name">'+esc(m.name)+'</div>'+
+        '<div class="artist">'+esc(m.artists.join(" / "))+'</div>'+
+        '<div class="tags"><span class="genre">'+esc(m.style)+'</span><span class="lang">'+(GROUP_NAMES[m.lang]||m.lang)+'</span><span class="score">⭐'+m.score+'</span></div>'+
+        (m.summary ? '<div class="summary">'+esc(m.summary)+'</div>' : (m.lyric ? '<div class="lyric">'+esc(m.lyric)+'</div>' : ''))+
+      '</div>';
+    c.querySelector(".swap").addEventListener("click", function(){ swapSong(m.id); });
+    return c;
+  }
+  function render(){
+    $groups.innerHTML = "";
+    if (!picks.length){ return; }
+    $toolbar.style.display = "flex";
+    $selCount.textContent = picks.length;
+    var key = groupBy === "style" ? "style" : "lang";
+    var buckets = {};
+    picks.forEach(function(m){ var k = key==="lang" ? (GROUP_NAMES[m.lang]||m.lang) : m.style; (buckets[k]=buckets[k]||[]).push(m); });
+    var idx = 0;
+    Object.keys(buckets).forEach(function(label){
+      var g = document.createElement("div");
+      var lab = document.createElement("div");
+      lab.className = "group-label";
+      lab.textContent = label + " · " + buckets[label].length + " 首";
+      g.appendChild(lab);
+      var grid = document.createElement("div");
+      grid.className = "grid";
+      buckets[label].forEach(function(m){ grid.appendChild(songCard(m, idx++)); });
+      g.appendChild(grid);
+      $groups.appendChild(g);
+    });
+  }
+  function setGroup(mode, btn){
+    groupBy = mode;
+    document.querySelectorAll(".seg button").forEach(function(b){ b.classList.remove("active"); });
+    btn.classList.add("active");
+    render();
+  }
+
+  /* 换歌 / 换一批 */
+  async function swapSong(songId){
+    var r = await fetch('/api/replace', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ picks: picks, excludeId: songId }) });
+    var d = await r.json();
+    if (d.song){ picks = picks.map(function(p){ return p.id === songId ? d.song : p; }); render(); toast("已换一首"); }
+    else { toast("没有更多候选了"); }
+  }
+  async function regenerateAll(){
+    var r = await fetch('/api/regenerate');
+    var d = await r.json();
+    if (d.picks && d.picks.length){ picks = d.picks; render(); toast("已换一批"); }
+  }
+
+  /* 建歌单 */
+  async function createPlaylist(){
+    if (!picks.length) return;
+    if (!loggedIn){ toast("请先扫码登录"); scrollToStep(2); return; }
+    var d = new Date();
+    var name = '每日探索 ' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    var r = await fetch('/api/create', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: name, picks: picks }) });
+    var data = await r.json();
+    if (data.error){ toast("创建失败："+data.error); return; }
+    $resultLink.innerHTML = '<div class="result-link">✅ 歌单<b>「'+esc(name)+'」</b>已创建！<br>链接：<a href="'+data.link+'" target="_blank">'+data.link+'</a><br>口令：分享我的歌单《'+esc(name)+'》 '+data.link+' (@网易云音乐)</div>';
+    $resultLink.scrollIntoView({ behavior:"smooth" });
+  }
+
+  /* 文案设置 */
+  var llmEnabled = false;
+  function setMode(on){
+    llmEnabled = on;
+    document.getElementById("modeLyric").className = on ? "" : "active";
+    document.getElementById("modeLlm").className = on ? "active" : "";
+    document.getElementById("llmFields").style.display = on ? "block" : "none";
+  }
+  async function loadConfig(){
+    var r = await fetch('/api/config');
+    var cfg = await r.json();
+    llmEnabled = cfg.llmEnabled;
+    document.getElementById("cfgBaseUrl").value = cfg.baseUrl || '';
+    document.getElementById("cfgModel").value = cfg.model || 'deepseek-ai/DeepSeek-V3.2';
+    if (cfg.hasKey) document.getElementById("cfgApiKey").placeholder = '已设置（留空则不修改）';
+    setMode(llmEnabled);
+  }
+  async function saveConfig(){
+    var apiKeyInput = document.getElementById("cfgApiKey");
+    var body = {
+      llmEnabled: llmEnabled,
+      baseUrl: document.getElementById("cfgBaseUrl").value.trim(),
+      model: document.getElementById("cfgModel").value.trim(),
+      apiKey: apiKeyInput.value.trim(),
+    };
+    if (llmEnabled && !body.apiKey && !apiKeyInput.placeholder.includes('已设置')){ toast("启用 AI 梗概需要填 API Key"); return; }
+    await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    apiKeyInput.value = '';
+    apiKeyInput.placeholder = '已设置（留空则不修改）';
+    toast("已保存");
+  }
+  async function testLlm(){
+    var el = document.getElementById("testResult");
+    el.innerHTML = '<span style="color:var(--muted)">测试中...</span>';
+    try {
+      var r = await fetch('/api/llm-test', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+        baseUrl: document.getElementById("cfgBaseUrl").value.trim(),
+        apiKey: document.getElementById("cfgApiKey").value.trim(),
+        model: document.getElementById("cfgModel").value.trim(),
+      }) });
+      var d = await r.json();
+      el.innerHTML = d.ok ? '<span style="color:#0a8f5b">✅ 连接成功：'+esc(d.reply)+'</span>' : '<span style="color:var(--brand)">❌ '+esc(d.error)+'</span>';
+    } catch(e){ el.innerHTML = '<span style="color:var(--brand)">❌ '+esc(e.message)+'</span>'; }
+  }
+
+  $btnCollapse.addEventListener("click", function(){ document.getElementById("step-card-3").classList.toggle("collapsed"); });
+  window.scrollToStep = function(n){ var el = document.getElementById("step-card-"+n); if (el) el.scrollIntoView({ behavior:"smooth", block:"start" }); };
+  window.handleLoginBtn = handleLoginBtn;
+  window.generate = generate;
+  window.setGroup = setGroup;
+  window.regenerateAll = regenerateAll;
+  window.createPlaylist = createPlaylist;
+  window.login = login;
+  window.setMode = setMode;
+  window.testLlm = testLlm;
+  window.saveConfig = saveConfig;
+
+  var savedPid = loadPid();
+  if (savedPid) document.getElementById("pid").value = savedPid;
+  document.getElementById("pid").addEventListener("input", function(){
+    var id = extractPid(this.value);
+    if (id) savePid(id);
+  });
+
+  checkAccount();
+  loadConfig();
+})();
+</script>
+</body>
+</html>
