@@ -10,7 +10,7 @@ const {
 } = require('NeteaseCloudMusicApi');
 const { generate, replace, regenerate } = require('./daily');
 
-const PORT = Number(process.env.PORT) || 8721;
+const PORT = Number(process.env.PORT) || 8080;
 const DATA_DIR = path.join(__dirname, 'data');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 

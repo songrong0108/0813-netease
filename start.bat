@@ -8,5 +8,6 @@ if errorlevel 1 (
   exit /b 1
 )
 echo 正在启动每日探索歌单...
+set PORT=8721
 node server.js
 pause
