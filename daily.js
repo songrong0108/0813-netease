@@ -100,13 +100,19 @@ async function getStylePool(refresh) {
     return JSON.parse(fs.readFileSync(POOL_FILE, 'utf8'));
   }
   const collected = [];
+  const PAGE_SIZE = 200;
+  const PAGES = 3;
   for (const s of STYLES) {
-    try {
-      const r = await style_song({ tagId: s.tagId, size: 200 });
-      const songs = (r.body && r.body.data && r.body.data.songs) || [];
-      songs.forEach(song => collected.push({ style: s.name, song }));
-    } catch (e) { console.error('style_song err:', s.name, e.message); }
-    await sleep(250);
+    for (let page = 0; page < PAGES; page++) {
+      try {
+        const r = await style_song({ tagId: s.tagId, size: PAGE_SIZE, cursor: page * PAGE_SIZE });
+        const songs = (r.body && r.body.data && r.body.data.songs) || [];
+        songs.forEach(song => collected.push({ style: s.name, song }));
+        const more = r.body && r.body.data && r.body.data.page && r.body.data.page.more;
+        if (!more) break;
+      } catch (e) { console.error('style_song err:', s.name, e.message); break; }
+      await sleep(250);
+    }
   }
   const byId = new Map();
   for (const x of collected) if (!byId.has(x.song.id)) byId.set(x.song.id, x);
@@ -144,9 +150,12 @@ async function getStylePool(refresh) {
 }
 
 function scoreOf(pop, rand) {
-  if (pop >= 100) return 90 + Math.floor(rand() * 11);
-  if (pop >= 90) return pop;
-  return Math.max(70, pop);
+  if (pop == null) return 88;
+  if (pop >= 85) return 60;
+  if (pop < 5) return 60;
+  if (pop <= 30) return 92 + Math.floor(rand() * 6);
+  if (pop <= 50) return 86 + Math.floor(rand() * 8);
+  return 78 + Math.floor(rand() * 8);
 }
 
 function decorate(m, seedStr) {
@@ -184,7 +193,84 @@ async function attachLyrics(picks) {
 
 let _cache = null;
 
-function select(pool, known, quota, seedStr, langAnchors) {
+const NICHE_LEVELS = {
+  light: { hotMin: 90, coldMax: 50, hot: 2, cold: 1, midCenter: 68, midSigma: 20 },
+  medium: { hotMin: 85, coldMax: 35, hot: 2, cold: 2, midCenter: 55, midSigma: 16 },
+  deep: { hotMin: 70, coldMax: 20, hot: 1, cold: 3, midCenter: 35, midSigma: 15 },
+};
+
+function gaussWeight(pop, center, sigma) {
+  if (pop == null) return 0.3;
+  const d = (pop - center) / sigma;
+  return Math.exp(-0.5 * d * d);
+}
+
+function sampleByNiche(fresh, quota, seedStr, niche) {
+  const level = NICHE_LEVELS[niche] || NICHE_LEVELS.medium;
+  const hot = [], mid = [], cold = [];
+  for (const m of fresh) {
+    const p = m.pop == null ? 50 : m.pop;
+    if (p >= level.hotMin) hot.push(m);
+    else if (p <= level.coldMax) cold.push(m);
+    else mid.push(m);
+  }
+
+  const picks = [];
+  const usedArtists = new Set();
+  const usedStyles = new Map();
+  const canPick = m => {
+    if (picks.includes(m)) return false;
+    const akey = m.artistIds.join(',') || m.artists.join(',');
+    if (usedArtists.has(akey)) return false;
+    if ((usedStyles.get(m.style) || 0) >= 2) return false;
+    return true;
+  };
+  const take = m => {
+    usedArtists.add(m.artistIds.join(',') || m.artists.join(','));
+    usedStyles.set(m.style, (usedStyles.get(m.style) || 0) + 1);
+    picks.push(m);
+  };
+  const pickRandom = (list, n, tag) => {
+    const arr = seededShuffle(list, seedStr + tag);
+    for (const m of arr) {
+      if (picks.length >= DAILY_N || n <= 0) break;
+      if (canPick(m)) { take(m); n--; }
+    }
+  };
+
+  pickRandom(hot, level.hot, 'hot');
+  pickRandom(cold, level.cold, 'cold');
+
+  const midByLang = new Map();
+  for (const m of mid) {
+    if (!midByLang.has(m.lang)) midByLang.set(m.lang, []);
+    midByLang.get(m.lang).push(m);
+  }
+  for (const [l, arr] of midByLang) {
+    const rand = seededRand(seedStr + 'mid' + l);
+    arr.sort((a, b) => (gaussWeight(b.pop, level.midCenter, level.midSigma) + rand() * 0.25) - (gaussWeight(a.pop, level.midCenter, level.midSigma) + rand() * 0.25));
+  }
+
+  const tryPick = lang => {
+    if (picks.length >= DAILY_N) return false;
+    const arr = midByLang.get(lang) || [];
+    for (const m of arr) {
+      if (picks.length >= DAILY_N) return false;
+      if (canPick(m)) { take(m); return true; }
+    }
+    return false;
+  };
+
+  for (const [lang, q] of Object.entries(quota)) for (let i = 0; i < q; i++) tryPick(lang);
+  while (picks.length < DAILY_N) {
+    let filled = false;
+    for (const lang of Object.keys(midByLang)) { if (picks.length >= DAILY_N) break; if (tryPick(lang)) filled = true; }
+    if (!filled) break;
+  }
+  return picks.slice(0, DAILY_N);
+}
+
+function select(pool, known, quota, seedStr, langAnchors, niche = 'medium') {
   const fresh = pool.filter(m => {
     if (known.songs.has(m.id)) return false;
     if (m.artistIds.some(a => known.artists.has(a))) return false;
@@ -194,45 +280,7 @@ function select(pool, known, quota, seedStr, langAnchors) {
 
   for (const m of fresh) m.lang = detectLang(m.name, m.artists, m.style);
 
-  const byLang = new Map();
-  for (const m of fresh) {
-    if (!byLang.has(m.lang)) byLang.set(m.lang, []);
-    byLang.get(m.lang).push(m);
-  }
-
-  for (const [l, arr] of byLang) {
-    const rand = seededRand(seedStr + l);
-    arr.sort((a, b) => ((b.pop || 0) + rand() * 0.999) - ((a.pop || 0) + rand() * 0.999));
-  }
-
-  const picks = [];
-  const usedArtists = new Set();
-  const usedStyles = new Map();
-
-  const tryPick = lang => {
-    const arr = byLang.get(lang) || [];
-    for (const m of arr) {
-      if (picks.includes(m)) continue;
-      const akey = m.artistIds.join(',') || m.artists.join(',');
-      if (usedArtists.has(akey)) continue;
-      if (m.artistIds.length === 0 && m.artists.length === 0) continue;
-      if ((usedStyles.get(m.style) || 0) >= 2) continue;
-      usedArtists.add(akey);
-      usedStyles.set(m.style, (usedStyles.get(m.style) || 0) + 1);
-      picks.push(m);
-      return true;
-    }
-    return false;
-  };
-
-  for (const [lang, q] of Object.entries(quota)) for (let i = 0; i < q; i++) tryPick(lang);
-  while (picks.length < DAILY_N) {
-    let filled = false;
-    for (const lang of Object.keys(byLang)) { if (picks.length >= DAILY_N) break; if (tryPick(lang)) filled = true; }
-    if (!filled) break;
-  }
-
-  const out = picks.slice(0, DAILY_N);
+  const out = sampleByNiche(fresh, quota, seedStr, niche);
   for (const m of out) decorate(m, seedStr);
   return { picks: out, fresh };
 }
@@ -264,46 +312,14 @@ function replace(picks, excludeId, seedStr) {
 
 async function regenerate(seedStr) {
   if (!_cache || !_cache.fresh) return null;
-  const { fresh, quota } = _cache;
-  const picks = [];
-  const usedArtists = new Set();
-  const usedStyles = new Map();
-
-  const byLang = new Map();
-  for (const m of fresh) {
-    if (!byLang.has(m.lang)) byLang.set(m.lang, []);
-    byLang.get(m.lang).push(m);
-  }
-  for (const [l, arr] of byLang) {
-    const rand = seededRand(seedStr + l);
-    arr.sort((a, b) => ((b.pop || 0) + rand() * 0.999) - ((a.pop || 0) + rand() * 0.999));
-  }
-  const tryPick = lang => {
-    const arr = byLang.get(lang) || [];
-    for (const m of arr) {
-      const akey = m.artistIds.join(',') || m.artists.join(',');
-      if (usedArtists.has(akey)) continue;
-      if ((usedStyles.get(m.style) || 0) >= 2) continue;
-      usedArtists.add(akey);
-      usedStyles.set(m.style, (usedStyles.get(m.style) || 0) + 1);
-      picks.push(m);
-      return true;
-    }
-    return false;
-  };
-  for (const [lang, q] of Object.entries(quota)) for (let i = 0; i < q; i++) tryPick(lang);
-  while (picks.length < DAILY_N) {
-    let filled = false;
-    for (const lang of Object.keys(byLang)) { if (picks.length >= DAILY_N) break; if (tryPick(lang)) filled = true; }
-    if (!filled) break;
-  }
-  const out = picks.slice(0, DAILY_N);
+  const { fresh, quota, niche } = _cache;
+  const out = sampleByNiche(fresh, quota, seedStr, niche);
   for (const m of out) decorate(m, seedStr);
   await attachLyrics(out);
   return out;
 }
 
-async function generate({ playlistId = PLAYLIST_ID, refresh = false, seed, randSeed } = {}) {
+async function generate({ playlistId = PLAYLIST_ID, refresh = false, seed, randSeed, niche = 'medium' } = {}) {
   const today = seed || new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
   const pl = await getPlaylist(playlistId);
@@ -337,8 +353,8 @@ async function generate({ playlistId = PLAYLIST_ID, refresh = false, seed, randS
 
   const pool = await getStylePool(refresh);
   const seedStr = randSeed || today;
-  const { picks, fresh } = select(pool, known, quota, seedStr, langAnchors);
-  _cache = { fresh, known, quota, langAnchors };
+  const { picks, fresh } = select(pool, known, quota, seedStr, langAnchors, niche);
+  _cache = { fresh, known, quota, langAnchors, niche };
   await attachLyrics(picks);
 
   return { date: today, playlistName: pl.name, trackCount: tracks.length, quota, picks, langAnchors };

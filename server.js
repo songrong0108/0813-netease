@@ -156,7 +156,7 @@ async function handle(req, res) {
       const body = await readBody(req);
       const playlistId = body.playlistId;
       if (!playlistId) return json(res, 400, { error: '缺少 playlistId' });
-      const r = await generate({ playlistId });
+      const r = await generate({ playlistId, niche: body.niche || 'medium' });
       if (config.llmEnabled && config.apiKey) {
         let failCount = 0;
         let firstErr = '';

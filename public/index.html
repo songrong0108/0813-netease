@@ -226,6 +226,15 @@
             <input id="pid" placeholder="https://music.163.com/playlist?id=122115618" />
             <div class="hint">网易云 App → 我的 → 我喜欢的音乐 → 分享 → 复制链接</div>
           </div>
+          <div class="field" style="margin-top:14px">
+            <label>小众程度</label>
+            <div class="seg" id="nicheSeg">
+              <button type="button" data-niche="light" onclick="setNiche('light', this)">轻度</button>
+              <button type="button" data-niche="medium" class="active" onclick="setNiche('medium', this)">中度</button>
+              <button type="button" data-niche="deep" onclick="setNiche('deep', this)">重度</button>
+            </div>
+            <div class="hint" id="nicheHint">中度：评论大多 1k 左右，1w+ 的只留 1~2 首</div>
+          </div>
           <div class="gen-zone" style="margin-top:18px;padding-top:18px">
             <button class="btn btn-primary" type="button" id="btn-generate" onclick="generate()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/></svg>
@@ -335,6 +344,7 @@
   var loggedIn = false;
   var loginNickname = '';
   var groupBy = "style";
+  var niche = 'medium';
   var GROUP_NAMES = { 华语:"华语", 欧美:"欧美", 日语:"日系", 韩语:"韩系" };
   var HUES = [8,20,42,198,268,322,350,55,142,92,275,16];
 
@@ -432,6 +442,17 @@
     if (/^\d+$/.test(v)) return v;
     return '';
   }
+  function setNiche(v, btn){
+    niche = v;
+    document.querySelectorAll('#nicheSeg button').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    var hints = {
+      light: '轻度：评论大多 3k 上下，偏大众',
+      medium: '中度：评论大多 1k 左右，1w+ 只留 1~2 首',
+      deep: '重度：评论大多几百条，纯冷门'
+    };
+    document.getElementById('nicheHint').textContent = hints[v];
+  }
   async function generate(){
     var pid = extractPid(document.getElementById("pid").value);
     if (!pid){ toast("请先填写有效的歌单 id"); return; }
@@ -440,7 +461,7 @@
     $genBtn.innerHTML = '<span class="spinner"></span>正在生成…';
     $genNote.textContent = "AI 正在分析你的口味并探索新歌（首次约 1 分钟）…";
     try {
-      var r = await fetch('/api/generate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ playlistId: pid }) });
+      var r = await fetch('/api/generate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ playlistId: pid, niche: niche }) });
       var data = await r.json();
       if (data.error){ toast("出错："+data.error); $genBtn.disabled = false; $genBtn.innerHTML = orig; return; }
       picks = data.picks;
@@ -590,6 +611,7 @@
   window.setMode = setMode;
   window.testLlm = testLlm;
   window.saveConfig = saveConfig;
+  window.setNiche = setNiche;
 
   var savedPid = loadPid();
   if (savedPid) document.getElementById("pid").value = savedPid;
