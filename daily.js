@@ -300,8 +300,12 @@ function replace(picks, excludeId, seedStr) {
     return true;
   });
 
-  const sameStyle = candidates.filter(m => m.style === victim.style);
-  const pool2 = sameStyle.length ? sameStyle : candidates;
+  const tier = p => p == null ? 'mid' : (p >= 85 ? 'hot' : (p <= 35 ? 'cold' : 'mid'));
+  const victimTier = tier(victim.pop);
+  const diffStyle = candidates.filter(m => m.style !== victim.style);
+  let pool2 = diffStyle.length ? diffStyle : candidates;
+  const sameTier = pool2.filter(m => tier(m.pop) === victimTier);
+  pool2 = sameTier.length ? sameTier : pool2;
   if (!pool2.length) return null;
 
   const rand = seededRand(seedStr || String(Date.now()));
