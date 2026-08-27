@@ -177,7 +177,9 @@
     .step-body{ padding:18px 18px 24px; }
     .groups{ padding:12px 18px 22px; }
     .toolbar{ padding:18px 18px 6px; }
-    .grid{ grid-template-columns:repeat(2,1fr); gap:14px; }
+    .grid{ display:flex; overflow-x:auto; gap:12px; padding-bottom:8px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+    .grid::-webkit-scrollbar{ display:none; }
+    .grid .song{ flex:0 0 auto; width:142px; }
   }
   @media (prefers-reduced-motion:reduce){ *{ animation:none !important; transition:none !important; } }
 </style>
