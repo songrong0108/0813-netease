@@ -221,7 +221,7 @@ async function handle(req, res) {
         const r = await fetch(`${base}/chat/completions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey}` },
-          body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: '请只回复两个字：成功' }], max_tokens: 20 }),
+          body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: '请只回复：PING' }], max_tokens: 20 }),
         });
         const text = await r.text();
         let data;
@@ -230,7 +230,13 @@ async function handle(req, res) {
         }
         if (data.error) return json(res, 200, { ok: false, error: `${data.error.code || ''} ${data.error.message || '接口返回错误'}`.trim() });
         const reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-        return json(res, 200, { ok: true, reply: (reply || '').trim(), model: cfg.model });
+        if (!reply || !String(reply).trim()) {
+          return json(res, 200, { ok: false, error: '连接异常：模型未返回内容，请确认 baseUrl 是有效的 LLM API 地址' });
+        }
+        if (!/PING/i.test(String(reply))) {
+          return json(res, 200, { ok: false, error: '模型回复异常（未按指令返回 PING），可能不是有效的 LLM API 地址。实际回复："' + String(reply).slice(0, 30) + '"' });
+        }
+        return json(res, 200, { ok: true, reply: String(reply).trim(), model: cfg.model });
       } catch (e) {
         return json(res, 200, { ok: false, error: e.message });
       }
