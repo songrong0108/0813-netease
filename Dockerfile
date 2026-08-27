@@ -9,6 +9,7 @@ COPY server.js daily.js render-html.js create-playlist.js ./
 COPY public ./public
 COPY data/style-pool.json ./data/style-pool.json
 
-EXPOSE 8080
+ENV PORT=80
+EXPOSE 80
 
 CMD ["node", "server.js"]
